@@ -24,10 +24,11 @@
  */
 
 $string['default'] = 'Enabled by default';
-$string['students'] = 'Number of students in a group';
-$string['students_help'] = 'This setting configures the number of stundets in a group';
 $string['default_help'] = 'If set, this submission method will be enabled by default for all new assignments.';
 $string['enabled'] = 'Reflection';
 $string['enabled_help'] = 'If enabled, students are able to work with Reflection.';
+$string['forumintro'] = '<p>For instructions, please go to the original assignment {$a->href} {$a->name}</a>.</p>';
 $string['pluginname'] = 'Reflection';
 $string['reflection'] = 'Reflection submission';
+$string['students'] = 'Number of students in a group';
+$string['students_help'] = 'This setting configures the number of stundets in a group';
