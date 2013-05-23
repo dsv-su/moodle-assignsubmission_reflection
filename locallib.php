@@ -94,7 +94,8 @@ class assign_submission_reflection extends assign_submission_plugin {
         $updateid = optional_param('update', 0, PARAM_INT);
         $this->set_config('students', $data->assignsubmission_reflection_students);
         if ($data->assignsubmission_reflection_enabled && !$updateid) {
-            $this->create_grouping_and_forum($data);
+            $forumid = $this->create_grouping_and_forum($data);
+            $this->set_config('forumid', $forumid);
         }
         return true;
     }
@@ -140,8 +141,9 @@ class assign_submission_reflection extends assign_submission_plugin {
         $forum->intro = get_string('forumintro', 'assignsubmission_reflection', $obj);
         $forum->section = $data->section;
         $forum->coursemodule = $coursemodule;
-        $forum->forcesubscribe = 2; // Auto subscription.
-        $forum->maxbytes = $data->maxbytes;
+        $forum->forcesubscribe = 1; // Auto subscription.
+        $forum->maxbytes = 512000;
+        $forum->maxattachments = 1;
         $forum->cmidnumber = $data->cmidnumber; // Not sure why it is needed, but this prevents errors.
         $forumid = forum_add_instance($forum);
 
@@ -168,7 +170,7 @@ class assign_submission_reflection extends assign_submission_plugin {
         // Configure the newly created forum to be associated with the newly created grouping.
         $DB->set_field('course_modules', 'groupingid', $grouping->id, array('id'=>$coursemodule));
 
-        return true;
+        return $forumid;
     }
 
     /**
@@ -180,9 +182,61 @@ class assign_submission_reflection extends assign_submission_plugin {
      * @return bool
      */
     public function get_form_elements($submission, MoodleQuickForm $mform, stdClass $data) {
+        global $CFG, $DB, $COURSE, $USER;
+        require_once($CFG->dirroot.'/group/lib.php');
+
         $cmid = required_param('id', PARAM_INT);
-        $mailboxurl = new moodle_url('/mod/assign/submission/mailsimulator/mailbox.php', array("id"=>$cmid));
-        redirect($mailboxurl);
+        $discussionopened = $DB->get_record('forum_discussions', array('userid' => $USER->id));
+        $forumid = $this->get_config('forumid');
+        $groupingid = $DB->get_field('groupings', 'id', array('idnumber' => $forumid));
+
+        $sql = "SELECT * FROM {groups_members} gm 
+            INNER JOIN {groups} g ON gm.groupid = g.id 
+            INNER JOIN {groupings_groups} gg ON gg.groupid = g.id WHERE 
+            gg.groupingid = " . $groupingid . " AND gm.userid = " . $USER->id;
+
+        $userisingroup = $DB->get_records_sql($sql);
+
+        if (!$submission && !$userisingroup) {
+            $groupsize = $this->get_config('students');
+            $lastgroupid = $DB->get_field('groupings_groups', 'groupid', array('groupingid' => $groupingid));
+            
+            if ($lastgroupid) {
+                $memberslastgroup = $DB->count_records('groups_members', array('groupid' => $lastgroupid));
+            } else {
+                $memberslastgroup = 0;
+            }
+
+            if ($memberslastgroup == 0 || $memberslastgroup >= $groupsize) {
+                // Create a new group.
+                $timenow = time();
+                $group = new stdClass();
+                $group->name = get_string('pluginname', 'assignsubmission_reflection').get_string('group','group').date("ymdHis", $timenow);
+                $group->courseid = $COURSE->id;
+                $group->description = "Reflection activity group";
+                $group->id = groups_create_group($group);
+                groups_assign_grouping($groupingid, $group->id);
+                // Add a student to a group.
+                if (!groups_add_member($group->id, $USER->id)) {
+                    print_error('erroraddremoveuser', 'group');
+                }
+            } else {
+                // Add a student to a group.
+                if (!groups_add_member($lastgroupid, $USER->id)) {
+                    print_error('erroraddremoveuser', 'group');
+                }
+            }
+        }
+
+        if ($discussionopened) {
+            $forumcm = get_coursemodule_from_instance('forum', $forumid);
+            $redirecturl = new moodle_url($CFG->wwwroot . '/mod/forum/view.php', array('id' => $forumcm->id));
+        } else {
+            $redirecturl = new moodle_url($CFG->wwwroot . '/mod/forum/post.php', array('forum' => $forumid));
+        }
+
+        redirect($redirecturl);
+
         return true;
     }
 
