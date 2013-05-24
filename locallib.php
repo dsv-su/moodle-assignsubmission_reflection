@@ -186,8 +186,8 @@ class assign_submission_reflection extends assign_submission_plugin {
         require_once($CFG->dirroot.'/group/lib.php');
 
         $cmid = required_param('id', PARAM_INT);
-        $discussionopened = $DB->get_record('forum_discussions', array('userid' => $USER->id));
         $forumid = $this->get_config('forumid');
+        $discussionopened = $DB->get_record('forum_discussions', array('userid' => $USER->id, 'forum' => $forumid));
         $groupingid = $DB->get_field('groupings', 'id', array('idnumber' => $forumid));
 
         $sql = "SELECT * FROM {groups_members} gm 
@@ -232,6 +232,7 @@ class assign_submission_reflection extends assign_submission_plugin {
             $forumcm = get_coursemodule_from_instance('forum', $forumid);
             $redirecturl = new moodle_url($CFG->wwwroot . '/mod/forum/view.php', array('id' => $forumcm->id));
         } else {
+            $this->update_user_submission($USER->id);
             $redirecturl = new moodle_url($CFG->wwwroot . '/mod/forum/post.php', array('forum' => $forumid));
         }
 
@@ -240,6 +241,43 @@ class assign_submission_reflection extends assign_submission_plugin {
         return true;
     }
 
+    /**
+     * Check if a user have a registered submission to an assignment.
+     *
+     * @param mixed $userid
+     * @param mixed $assignment_instance
+     * @return mixed False if no submission, else the submission record.
+     */
+    function user_have_registered_submission($userid, $assignment_instance) {
+        global $DB;
+
+        $submission = $DB->get_record('assign_submission', array(
+            'assignment' => $assignment_instance,
+            'userid' => $userid
+        ));
+
+        return $submission;
+    }
+
+    /**
+     * Update the information about user's submission
+     *
+     * @param int $userid
+     */
+    function update_user_submission($userid) {
+        global $DB;
+
+        $cmid = required_param('id', PARAM_INT);
+        $cm = get_coursemodule_from_id('assign', $cmid, 0, false, MUST_EXIST);
+
+        $existingsubmission = $this->user_have_registered_submission($userid, $cm->instance);
+        $submission = $this->assignment->get_user_submission($userid, true);
+
+        if ($existingsubmission) {
+            $submission->timemodified = time();
+            $DB->update_record('assign_submission', $submission);
+        }
+    }
 
     /**
      * Displays all posts and reflection comments for this assignment from a specified student.
@@ -248,28 +286,63 @@ class assign_submission_reflection extends assign_submission_plugin {
      * @return string
      */
     public function view(stdClass $submission) {
-        global $CFG, $DB, $OUTPUT;
+        global $CFG, $DB, $OUTPUT, $PAGE, $COURSE, $USER;
+        require_once($CFG->dirroot . '/mod/forum/lib.php');
 
         $id         = required_param('id', PARAM_INT);
         $sid        = optional_param('sid', $submission->id, PARAM_INT);
         $gid        = optional_param('gid', 0, PARAM_INT);
-        $userid     = $DB->get_field('assign_submission', 'userid', array("id" => $sid));
         $cm         = get_coursemodule_from_id('assign', $id, 0, false, MUST_EXIST);
         $course     = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
-        $context    = context_module::instance($cm->id);
-        require_once($CFG->dirroot.'/mod/assign/submission/mailsimulator/mailbox_class.php');
-        $mailboxinstance = new mailbox($context, $cm, $course);
+        $forumid    = $this->get_config('forumid');
+        $forum      = $DB->get_record('forum', array('id' => $forumid));
+
+        list($entries, $comments) = $this->get_entries_and_comments($submission->userid, false);
 
         ob_start();
-        if ($submission) {
-            $mailboxinstance->view_grading_feedback($userid);
-        } else {
-            error(get_string('submissionstatus_', 'assign'));
-        }
-        $o = ob_get_contents();
-        ob_end_clean();
 
-        return $o;
+        echo $OUTPUT->heading(get_string('postsmadebyuser', 'forum', $USER->firstname.' '.$USER->lastname), 2);
+        echo $OUTPUT->heading(get_string('pluginname', 'assignsubmission_reflection', $USER->firstname.' '.$USER->lastname), 3);
+        $post = forum_get_post_full(current($entries)->id);
+        $discussion = $DB->get_record('forum_discussions', array('userid' => $submission->userid, 'forum' => $forumid));   
+        forum_print_post($post, $discussion, $forum, $cm, $course);
+
+        echo $OUTPUT->heading(get_string('comments'), 3);
+        foreach ($comments as $comment) {
+            $post = forum_get_post_full($comment->id);
+            $discussion = $DB->get_record('forum_discussions', array('id' => $post->discussion));   
+            forum_print_post($post, $discussion, $forum, $cm, $course);
+        }
+
+        $result = ob_get_contents();
+        ob_clean();
+
+        //var_dump($entries, $comments);
+
+        // This line prepares the comment subsystem. For example it adds a couple of language strings to js.
+        //comment::init();
+/*
+        $output = $PAGE->get_renderer('mod_forum');
+
+        $result = '';
+        $result .= $OUTPUT->heading(get_string('blogentries', 'blog'), 2);
+        foreach ($entries as $entry) {
+            $blogentry = new forum_portfolio_caller($entry->id);
+            $blogentry->prepare_post();
+            $result .= $output->render($blogentry);
+        }
+*/
+/*
+        if (count($comments) > 0) {
+            $result .= $OUTPUT->heading(get_string('comments'), 2);
+            foreach ($comments as $entry) {
+                $blogentry = new blog_entry($entry->id);
+                $blogentry->prepare_render();
+                $result .= $output->render($blogentry);
+            }
+        }
+  */
+        return $result;
     }
 
     /**
@@ -297,6 +370,55 @@ class assign_submission_reflection extends assign_submission_plugin {
         return $result;
 
     }
+
+
+    /**
+     * Fetches or counts (depending on the value of the parameter $countentries) all entries and comments that a specified user 
+     * have submitted to this assignment.
+     * 
+     * @param int $userid
+     * @param bool $countentries If true, the method returns a count of the number of entries and comments by the user. If false
+     *     the method returns the entries and comments. Default value is false.
+     * @return void
+     */
+    private function get_entries_and_comments($userid, $countentries = false) {
+        global $DB, $COURSE, $USER;
+
+        if ($countentries) {
+            $selectstatement = 'SELECT COUNT(p.id) ';
+        } else {
+            $selectstatement = 'SELECT p.id ';
+        }
+
+
+        $entriesquery = $selectstatement.'FROM {forum_posts} p JOIN {forum_discussions} d ON d.id = p.discussion WHERE p.userid = ? '.
+                        'AND d.forum = ? AND p.parent = 0';
+
+        $commentsquery = $selectstatement.'FROM {forum_posts} p JOIN {forum_discussions} d ON d.id = p.discussion WHERE p.userid = ? '.
+                        'AND d.forum = ? AND p.parent <> 0';
+
+   //     $commentsquery = $selectstatement.'FROM {post} p JOIN {blog_association} ba ON ba.blogid = p.id '.
+    //                     'WHERE p.id IN (SELECT itemid FROM {comments} c WHERE userid = ? AND c.itemid = p.id '.
+    //                     'AND c.commentarea = "format_blog") AND ba.contextid = ?';
+
+        if (!empty($this->assignment->get_instance()->preventlatesubmissions)) {
+            $daterestriction = ' AND p.created BETWEEN '.$this->assignment->get_instance()->allowsubmissionsfromdate.
+                               ' AND '.$this->assignment->get_instance()->duedate;
+            $entriesquery  .= $daterestriction;
+            $commentsquery .= $daterestriction;
+        }
+
+        if ($countentries) {
+            $entries = $DB->count_records_sql($entriesquery, array($userid, $this->get_config('forumid')));
+            $comments = $DB->count_records_sql($commentsquery, array($userid, $this->get_config('forumid')));
+        } else {
+            $entries = $DB->get_records_sql($entriesquery, array($userid, $this->get_config('forumid')));
+            $comments = $DB->get_records_sql($commentsquery, array($userid, $this->get_config('forumid')));
+        }
+
+        return array($entries, $comments);
+    }
+
 
     /**
      * Produce a list of files suitable for export that represents this submission
