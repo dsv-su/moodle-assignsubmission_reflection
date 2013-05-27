@@ -286,7 +286,7 @@ class assign_submission_reflection extends assign_submission_plugin {
      * @return string
      */
     public function view(stdClass $submission) {
-        global $CFG, $DB, $OUTPUT, $PAGE, $COURSE, $USER;
+        global $CFG, $DB, $OUTPUT, $PAGE, $COURSE;
         require_once($CFG->dirroot . '/mod/forum/lib.php');
 
         $id         = required_param('id', PARAM_INT);
@@ -296,52 +296,29 @@ class assign_submission_reflection extends assign_submission_plugin {
         $course     = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
         $forumid    = $this->get_config('forumid');
         $forum      = $DB->get_record('forum', array('id' => $forumid));
+        $user       = $DB->get_record('user', array('id' => $submission->userid));
 
         list($entries, $comments) = $this->get_entries_and_comments($submission->userid, false);
 
         ob_start();
+        echo $OUTPUT->heading(get_string('postsmadebyuser', 'forum', fullname($user)), 2);
 
-        echo $OUTPUT->heading(get_string('postsmadebyuser', 'forum', $USER->firstname.' '.$USER->lastname), 2);
-        echo $OUTPUT->heading(get_string('pluginname', 'assignsubmission_reflection', $USER->firstname.' '.$USER->lastname), 3);
+        echo $OUTPUT->heading(get_string('pluginname', 'assignsubmission_reflection', 3));
         $post = forum_get_post_full(current($entries)->id);
         $discussion = $DB->get_record('forum_discussions', array('userid' => $submission->userid, 'forum' => $forumid));   
         forum_print_post($post, $discussion, $forum, $cm, $course);
 
-        echo $OUTPUT->heading(get_string('comments'), 3);
-        foreach ($comments as $comment) {
-            $post = forum_get_post_full($comment->id);
-            $discussion = $DB->get_record('forum_discussions', array('id' => $post->discussion));   
-            forum_print_post($post, $discussion, $forum, $cm, $course);
+        if (count($comments) > 0) {
+            echo $OUTPUT->heading(get_string('comments'), 3);
+            foreach ($comments as $comment) {
+                $post = forum_get_post_full($comment->id);
+                $discussion = $DB->get_record('forum_discussions', array('id' => $post->discussion));   
+                forum_print_post($post, $discussion, $forum, $cm, $course);
+            }
         }
-
         $result = ob_get_contents();
         ob_clean();
 
-        //var_dump($entries, $comments);
-
-        // This line prepares the comment subsystem. For example it adds a couple of language strings to js.
-        //comment::init();
-/*
-        $output = $PAGE->get_renderer('mod_forum');
-
-        $result = '';
-        $result .= $OUTPUT->heading(get_string('blogentries', 'blog'), 2);
-        foreach ($entries as $entry) {
-            $blogentry = new forum_portfolio_caller($entry->id);
-            $blogentry->prepare_post();
-            $result .= $output->render($blogentry);
-        }
-*/
-/*
-        if (count($comments) > 0) {
-            $result .= $OUTPUT->heading(get_string('comments'), 2);
-            foreach ($comments as $entry) {
-                $blogentry = new blog_entry($entry->id);
-                $blogentry->prepare_render();
-                $result .= $output->render($blogentry);
-            }
-        }
-  */
         return $result;
     }
 
@@ -357,14 +334,33 @@ class assign_submission_reflection extends assign_submission_plugin {
         global $DB;
 
         $showviewlink = true;
-        $cmid = required_param('id', PARAM_INT);
-        $cm = get_coursemodule_from_id('assign', $cmid, 0, false, MUST_EXIST);
-        $userid = $submission->userid+0;
+        $userid     = $submission->userid+0;
+        $forumid    = $this->get_config('forumid');
 
-        $result = html_writer::start_tag('div');
-        $result .= get_string('mailssent', 'assignsubmission_mailsimulator') . $mailssent;
+        list($entries, $comments) = $this->get_entries_and_comments($submission->userid, true);
+        $postmade = ($entries) ? get_string('yes') : get_string('no');
+        $sql = "SELECT DISTINCT p.discussion FROM {forum_posts} p 
+            INNER JOIN {forum_discussions} d 
+            ON p.discussion = d.id WHERE
+            forum = " . $forumid . " and p.userid = " . $userid;
+        $reflecteddiscussions = $DB->get_records_sql($sql);
+        $students = $this->get_config('students');
+        $allpostsreflected = (count($reflecteddiscussions) == ($students)) ? 1 : 0;
+
+        if ($allpostsreflected) {
+            $divclass = 'submissionstatussubmitted';
+        } else {
+            $divclass = 'submissionstatus';
+        }
+
+        $result = html_writer::start_tag('div', array('class' => $divclass));
+        $result .= get_string('postmade', 'assignsubmission_reflection') . $postmade;
         $result .= html_writer::empty_tag('br');
-        $result .= get_string('weightgiven', 'assignsubmission_mailsimulator') . $weightgiven;
+        $result .= get_string('comments', 'assignsubmission_reflection') . $comments;
+        if (!$allpostsreflected) {
+            $result .= html_writer::empty_tag('br');
+            $result .= get_string('commentmissing', 'assignsubmission_reflection');
+        }
         $result .= html_writer::end_tag('div');
 
         return $result;
@@ -397,10 +393,6 @@ class assign_submission_reflection extends assign_submission_plugin {
         $commentsquery = $selectstatement.'FROM {forum_posts} p JOIN {forum_discussions} d ON d.id = p.discussion WHERE p.userid = ? '.
                         'AND d.forum = ? AND p.parent <> 0';
 
-   //     $commentsquery = $selectstatement.'FROM {post} p JOIN {blog_association} ba ON ba.blogid = p.id '.
-    //                     'WHERE p.id IN (SELECT itemid FROM {comments} c WHERE userid = ? AND c.itemid = p.id '.
-    //                     'AND c.commentarea = "format_blog") AND ba.contextid = ?';
-
         if (!empty($this->assignment->get_instance()->preventlatesubmissions)) {
             $daterestriction = ' AND p.created BETWEEN '.$this->assignment->get_instance()->allowsubmissionsfromdate.
                                ' AND '.$this->assignment->get_instance()->duedate;
@@ -429,7 +421,57 @@ class assign_submission_reflection extends assign_submission_plugin {
      */
     public function get_files(stdClass $submission, stdClass $user) {
         global $DB, $CFG;
+        require_once($CFG->dirroot . '/mod/forum/lib.php');
+
+        $id         = required_param('id', PARAM_INT);
+        $cm         = get_coursemodule_from_id('assign', $id, 0, false, MUST_EXIST);
+        $course     = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
+        $forumid    = $this->get_config('forumid');
+        $forum      = $DB->get_record('forum', array('id' => $forumid));
+        $user       = $DB->get_record('user', array('id' => $submission->userid));
+
         $files = array();
+        list($entries, $comments) = $this->get_entries_and_comments($submission->userid);
+
+        if ($entries) {
+            $user = $DB->get_record('user', array(
+                'id' => $submission->userid
+            ), 'id, username, firstname, lastname', MUST_EXIST);
+
+            $finaltext  = html_writer::start_tag('html');
+            $finaltext .= html_writer::start_tag('head');
+            $finaltext .= html_writer::start_tag('title');
+            $finaltext .= get_string('postsmadebyuser', 'forum', fullname($user)) .' on '.$this->assignment->get_instance()->name;
+            $finaltext .= html_writer::end_tag('title');
+            $finaltext .= html_writer::empty_tag('meta', array(
+                'http-equiv' => 'Content-Type',
+                'content' => 'text/html; charset=utf-8'
+            ));
+            $finaltext .= html_writer::end_tag('head');
+            $finaltext .= html_writer::start_tag('body');
+
+            ob_start();
+            echo html_writer::tag('h3', get_string('pluginname', 'assignsubmission_reflection', fullname($user)));
+            $post = forum_get_post_full(current($entries)->id);
+            $discussion = $DB->get_record('forum_discussions', array('userid' => $submission->userid, 'forum' => $forumid));   
+            forum_print_post($post, $discussion, $forum, $cm, $course);
+
+            if (count($comments) > 0) {
+                echo html_writer::tag('h3', get_string('comments'));
+                foreach ($comments as $comment) {
+                    $post = forum_get_post_full($comment->id);
+                    $discussion = $DB->get_record('forum_discussions', array('id' => $post->discussion));   
+                    forum_print_post($post, $discussion, $forum, $cm, $course);
+                }
+            }
+            $finaltext .= ob_get_contents();
+            ob_clean();
+
+            $finaltext .= html_writer::end_tag('body');
+            $finaltext .= html_writer::end_tag('html');
+            $files[get_string('reflectionfilename', 'assignsubmission_reflection')] = array($finaltext);
+        }
+
         return $files;
     }
 
@@ -441,8 +483,18 @@ class assign_submission_reflection extends assign_submission_plugin {
      */
     public function is_empty(stdClass $submission) {
         global $DB;
-        $usermails = $DB->record_exists('assignsubmission_mail_mail', array('userid' => $submission->userid+0));
-        return empty($usermails);
+
+        $postsquery = 'SELECT p.id FROM {forum_posts} p JOIN {forum_discussions} d ON d.id = p.discussion WHERE p.userid = ? '.
+                        'AND d.forum = ?';
+        if (!empty($this->assignment->get_instance()->preventlatesubmissions)) {
+            $daterestriction = ' AND p.created BETWEEN '.$this->assignment->get_instance()->allowsubmissionsfromdate.
+                               ' AND '.$this->assignment->get_instance()->duedate;
+            $postsquery  .= $daterestriction;
+        }
+
+        $posts = $DB->record_exists_sql($postsquery, array($submission->userid+0, $this->get_config('forumid')));
+
+        return empty($posts);
     }  
 
 }

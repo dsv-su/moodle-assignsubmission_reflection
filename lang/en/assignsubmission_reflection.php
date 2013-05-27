@@ -23,12 +23,16 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+$string['commentmissing'] = 'Some posts are not reflected';
+$string['comments'] = 'Reflections given: ';
 $string['default'] = 'Enabled by default';
 $string['default_help'] = 'If set, this submission method will be enabled by default for all new assignments.';
 $string['enabled'] = 'Reflection';
 $string['enabled_help'] = 'If enabled, students are able to work with Reflection.';
 $string['forumintro'] = '<p>For instructions, please go to the original assignment {$a->href} {$a->name}</a>.</p>';
 $string['pluginname'] = 'Reflection';
+$string['postmade'] = 'Entry posted: ';
 $string['reflection'] = 'Reflection submission';
+$string['reflectionfilename'] = 'reflection.html';
 $string['students'] = 'Number of students in a group';
 $string['students_help'] = 'This setting configures the number of stundets in a group';
