@@ -63,8 +63,8 @@ class assign_submission_reflection extends assign_submission_plugin {
         $mform->disabledIf('submissiondrafts', 'assignsubmission_reflection_enabled', 'eq', 1);
         $mform->setDefault('teamsubmission', 0);
         $mform->disabledIf('teamsubmission', 'assignsubmission_reflection_enabled', 'eq', 1);
-        $mform->setDefault('assignsubmission_mailsimulator_enabled', 0);
-        $mform->disabledIf('assignsubmission_mailsimulator_enabled', 'assignsubmission_reflection_enabled', 'eq', 1);
+        //$mform->setDefault('assignsubmission_mailsimulator_enabled', 0);
+        //$mform->disabledIf('assignsubmission_mailsimulator_enabled', 'assignsubmission_reflection_enabled', 'eq', 1);
 
         // Select number of students in a group.
         $maxstudents = array();
