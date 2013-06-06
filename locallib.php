@@ -170,6 +170,14 @@ class assign_submission_reflection extends assign_submission_plugin {
         // Configure the newly created forum to be associated with the newly created grouping.
         $DB->set_field('course_modules', 'groupingid', $grouping->id, array('id'=>$coursemodule));
 
+        // Create a group for waiting students
+        $group = new stdClass();
+        $group->courseid = $COURSE->id;
+        $group->name = 'Waiting group for '. $data->name;
+        $group->description = "Reflection activity waiting group";
+        $group->idnumber = $forumid;
+        $group->id = groups_create_group($group);
+
         return $forumid;
     }
 
@@ -189,7 +197,7 @@ class assign_submission_reflection extends assign_submission_plugin {
         $forumid = $this->get_config('forumid');
         $discussionopened = $DB->get_record('forum_discussions', array('userid' => $USER->id, 'forum' => $forumid));
         $groupingid = $DB->get_field('groupings', 'id', array('idnumber' => $forumid));
-
+/*
         $sql = "SELECT * FROM {groups_members} gm 
             INNER JOIN {groups} g ON gm.groupid = g.id 
             INNER JOIN {groupings_groups} gg ON gg.groupid = g.id WHERE 
@@ -235,7 +243,11 @@ class assign_submission_reflection extends assign_submission_plugin {
             $this->update_user_submission($USER->id);
             $redirecturl = new moodle_url($CFG->wwwroot . '/mod/forum/post.php', array('forum' => $forumid));
         }
-
+*/
+        $redirecturl = new moodle_url($CFG->wwwroot . '/mod/assign/submission/reflection/post.php', array(
+            'id' => $cmid, 
+            'forumid' => $forumid,
+            'gid' => $groupingid));
         redirect($redirecturl);
 
         return true;
