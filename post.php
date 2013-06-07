@@ -91,6 +91,8 @@ if ($mform->is_cancelled()) {
 
         forum_add_discussion($discussion);
 
+        $plugininstance->update_user_submission($USER->id);
+
         if ((count($waitingusers)+1) == $plugininstance->get_config('students')) {
             // Create a new reflection group within the grouping
             $timenow = time();

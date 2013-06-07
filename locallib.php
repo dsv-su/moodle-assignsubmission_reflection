@@ -373,6 +373,8 @@ class assign_submission_reflection extends assign_submission_plugin {
             $result .= html_writer::empty_tag('br');
             $result .= get_string('commentmissing', 'assignsubmission_reflection');
         }
+        $result .= html_writer::empty_tag('br');
+        $result .= 'GROUP IS NOT FULL YET ,,, MESSAGE';
         $result .= html_writer::end_tag('div');
 
         return $result;
