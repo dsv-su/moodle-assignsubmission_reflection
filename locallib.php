@@ -92,7 +92,7 @@ class assign_submission_reflection extends assign_submission_plugin {
     public function save_settings(stdClass $data) {
         $updateid = optional_param('update', 0, PARAM_INT);
         $this->set_config('students', $data->assignsubmission_reflection_students);
-        if ($data->assignsubmission_reflection_enabled && !$updateid) {
+        if ($data->assignsubmission_reflection_enabled) {
             list($forumid, $gid, $waitingid) = $this->create_grouping_and_forum($data);
             $this->set_config('forumid', $forumid);
             $this->set_config('groupingid', $gid);
@@ -112,74 +112,99 @@ class assign_submission_reflection extends assign_submission_plugin {
         require_once($CFG->dirroot.'/group/lib.php');
         require_once($CFG->dirroot.'/mod/forum/lib.php');
 
-        // First add a course module for a forum.
-        $newcm = new stdClass();
-        $newcm->course           = $COURSE->id;
-        $newcm->module           = 9; // Forum
-        $newcm->section          = $data->section;
-        $newcm->instance         = 0; // not known yet, will be updated later (this is similar to restore code)
-        $newcm->visible          = $data->visible;
-        $newcm->visibleold       = $data->visible;
-        $newcm->groupmode        = 1; // Separate groups.
-        $newcm->groupingid       = 0; // Not known yet, will be updated later.
-        $newcm->groupmembersonly = 1;
-        if(!empty($CFG->enableavailability)) {
-            $newcm->availablefrom             = $data->availablefrom;
-            $newcm->availableuntil            = $data->availableuntil;
-            $newcm->showavailability          = $data->showavailability;
+        $existingforum = $DB->get_record('forum', array('id' => $this->get_config('forumid')));
+
+        if (!$existingforum) {
+            // First add a course module for a forum.
+            $newcm = new stdClass();
+            $newcm->course           = $COURSE->id;
+            $newcm->module           = 9; // Forum
+            $newcm->section          = $data->section;
+            $newcm->instance         = 0; // not known yet, will be updated later (this is similar to restore code)
+            $newcm->visible          = $data->visible;
+            $newcm->visibleold       = $data->visible;
+            $newcm->groupmode        = 1; // Separate groups.
+            $newcm->groupingid       = 0; // Not known yet, will be updated later.
+            $newcm->groupmembersonly = 1;
+            if(!empty($CFG->enableavailability)) {
+                $newcm->availablefrom             = $data->availablefrom;
+                $newcm->availableuntil            = $data->availableuntil;
+                $newcm->showavailability          = $data->showavailability;
+            }
+
+            $coursemodule = add_course_module($newcm);
+
+            // Then add a forum.
+            $forum = new stdClass();
+            $forum->course = $COURSE->id;
+            $forum->name = $data->name.' '.get_string('forum', 'forum');
+            $forum->type = 'eachuser';
+            $obj = new stdClass();
+            $obj->name = $data->name;
+            $obj->href = '<a href="'.$CFG->wwwroot.'/mod/assign/view.php?id='.$data->coursemodule.'">';
+            $forum->intro = get_string('forumintro', 'assignsubmission_reflection', $obj);
+            $forum->section = $data->section;
+            $forum->coursemodule = $coursemodule;
+            $forum->forcesubscribe = 1; // Auto subscription.
+            $forum->maxbytes = 512000;
+            $forum->maxattachments = 1;
+            $forum->cmidnumber = $data->cmidnumber; // Not sure why it is needed, but this prevents errors.
+            $forumid = forum_add_instance($forum);
+
+            // Configure the newly created module to be assosicated with the newly created forum.
+            $DB->set_field('course_modules', 'instance', $forumid, array('id'=>$coursemodule));
+
+            // !!!remove as much as we can if forum has not been created.... - todo!!!
+
+            // course_modules and course_sections each contain a reference
+            // to each other, so we have to update one of them twice.
+            $sectionid = course_add_cm_to_section($COURSE, $coursemodule, $data->section);
+            // make sure visibility is set correctly (in particular in calendar)
+            // note: allow them to set it even without moodle/course:activityvisibility
+            set_coursemodule_visible($coursemodule, $data->visible);
+        } else {
+            $existingforum->name = $data->name.' '.get_string('forum', 'forum');
+            $obj = new stdClass();
+            $obj->name = $data->name;
+            $obj->href = '<a href="'.$CFG->wwwroot.'/mod/assign/view.php?id='.$data->coursemodule.'">';
+            $existingforum->intro = get_string('forumintro', 'assignsubmission_reflection', $obj);
+            $DB->update_record('forum', $existingforum);
+            $forumid = $this->get_config('forumid');
         }
 
-        $coursemodule = add_course_module($newcm);
+        $existinggrouping = $DB->get_record('groupings', array('id' => $this->get_config('groupingid')));
+        if (!$existinggrouping) {
+            // Create a grouping. Control variable idnumber = forumid.
+            $grouping = new stdClass();
+            $grouping->name = $data->name.' '.get_string('grouping','group');
+            $grouping->courseid = $COURSE->id;
+            $grouping->idnumber = $forumid;
+            $grouping->description = "Reflection grouping";
+            $groupingid = groups_create_grouping($grouping);
+            // Configure the newly created forum to be associated with the newly created grouping.
+            $DB->set_field('course_modules', 'groupingid', $grouping->id, array('id'=>$coursemodule));
+        } else {
+            $existinggrouping->name = $data->name.' '.get_string('grouping','group');
+            $DB->update_record('groupings', $existinggrouping);
+            $groupingid = $this->get_config('groupingid');
+        }
 
-        // Then add a forum.
-        $forum = new stdClass();
-        $forum->course = $COURSE->id;
-        $forum->name = $data->name.' '.get_string('forum', 'forum');
-        $forum->type = 'eachuser';
-        $obj = new stdClass();
-        $obj->name = $data->name;
-        $obj->href = '<a href="'.$CFG->wwwroot.'/mod/assign/view.php?id='.$data->coursemodule.'">';
-        $forum->intro = get_string('forumintro', 'assignsubmission_reflection', $obj);
-        $forum->section = $data->section;
-        $forum->coursemodule = $coursemodule;
-        $forum->forcesubscribe = 1; // Auto subscription.
-        $forum->maxbytes = 512000;
-        $forum->maxattachments = 1;
-        $forum->cmidnumber = $data->cmidnumber; // Not sure why it is needed, but this prevents errors.
-        $forumid = forum_add_instance($forum);
-
-        // Configure the newly created module to be assosicated with the newly created forum.
-        $DB->set_field('course_modules', 'instance', $forumid, array('id'=>$coursemodule));
-
-        // !!!remove as much as we can if forum has not been created.... - todo!!!
-
-        // course_modules and course_sections each contain a reference
-        // to each other, so we have to update one of them twice.
-        $sectionid = course_add_cm_to_section($COURSE, $coursemodule, $data->section);
-        // make sure visibility is set correctly (in particular in calendar)
-        // note: allow them to set it even without moodle/course:activityvisibility
-        set_coursemodule_visible($coursemodule, $data->visible);
-
-        // Create a grouping. Control variable idnumber = forumid.
-        $grouping = new stdClass();
-        $grouping->name = $data->name.' '.get_string('grouping','group');
-        $grouping->courseid = $COURSE->id;
-        $grouping->idnumber = $forumid;
-        $grouping->description = "Reflection grouping";
-        $grouping->id = groups_create_grouping($grouping);
-
-        // Configure the newly created forum to be associated with the newly created grouping.
-        $DB->set_field('course_modules', 'groupingid', $grouping->id, array('id'=>$coursemodule));
-
-        // Create a group for waiting students
-        $group = new stdClass();
-        $group->courseid = $COURSE->id;
-        $group->name = get_string('assignsubmission_reflection', 'waitingname', $data->name);
-        $group->description = "Reflection activity waiting group";
-        $group->idnumber = $forumid;
-        $group->id = groups_create_group($group);
-
-        return array($forumid, $grouping->id, $group->id);
+        $existingwaiting = $DB->get_record('groups', array('id' => $this->get_config('waitingid')));
+        if (!$existingwaiting) {
+            // Create a group for waiting students
+            $group = new stdClass();
+            $group->courseid = $COURSE->id;
+            $group->name = get_string('waitingname', 'assignsubmission_reflection', $data->name);
+            $group->description = "Reflection activity waiting group";
+            $group->idnumber = $forumid;
+            $waitingid = groups_create_group($group);
+        } else {
+            $existingwaiting->name = get_string('waitingname', 'assignsubmission_reflection', $data->name);
+            $DB->update_record('groups', $existingwaiting);
+            $waitingid = $this->get_config('waitingid');
+        }
+        
+        return array($forumid, $groupingid, $waitingid);
     }
 
     /**
