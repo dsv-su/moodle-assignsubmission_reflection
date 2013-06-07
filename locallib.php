@@ -60,7 +60,6 @@ class assign_submission_reflection extends assign_submission_plugin {
         $mform->disabledIf('assignsubmission_blog_enabled', 'assignsubmission_reflection_enabled', 'eq', 1);
         $mform->disabledIf('assignsubmission_onlinetext_enabled', 'assignsubmission_reflection_enabled', 'eq', 1);
         $mform->setDefault('submissiondrafts', 1);
-        $mform->disabledIf('submissiondrafts', 'assignsubmission_reflection_enabled', 'eq', 1);
         $mform->setDefault('teamsubmission', 0);
         $mform->disabledIf('teamsubmission', 'assignsubmission_reflection_enabled', 'eq', 1);
         //$mform->setDefault('assignsubmission_mailsimulator_enabled', 0);
@@ -94,8 +93,10 @@ class assign_submission_reflection extends assign_submission_plugin {
         $updateid = optional_param('update', 0, PARAM_INT);
         $this->set_config('students', $data->assignsubmission_reflection_students);
         if ($data->assignsubmission_reflection_enabled && !$updateid) {
-            $forumid = $this->create_grouping_and_forum($data);
+            list($forumid, $gid, $waitingid) = $this->create_grouping_and_forum($data);
             $this->set_config('forumid', $forumid);
+            $this->set_config('groupingid', $gid);
+            $this->set_config('waitingid', $waitingid);
         }
         return true;
     }
@@ -173,12 +174,12 @@ class assign_submission_reflection extends assign_submission_plugin {
         // Create a group for waiting students
         $group = new stdClass();
         $group->courseid = $COURSE->id;
-        $group->name = 'Waiting group for '. $data->name;
+        $group->name = get_string('assignsubmission_reflection', 'waitingname', $data->name);
         $group->description = "Reflection activity waiting group";
         $group->idnumber = $forumid;
         $group->id = groups_create_group($group);
 
-        return $forumid;
+        return array($forumid, $grouping->id, $group->id);
     }
 
     /**
@@ -197,57 +198,12 @@ class assign_submission_reflection extends assign_submission_plugin {
         $forumid = $this->get_config('forumid');
         $discussionopened = $DB->get_record('forum_discussions', array('userid' => $USER->id, 'forum' => $forumid));
         $groupingid = $DB->get_field('groupings', 'id', array('idnumber' => $forumid));
-/*
-        $sql = "SELECT * FROM {groups_members} gm 
-            INNER JOIN {groups} g ON gm.groupid = g.id 
-            INNER JOIN {groupings_groups} gg ON gg.groupid = g.id WHERE 
-            gg.groupingid = " . $groupingid . " AND gm.userid = " . $USER->id;
-
-        $userisingroup = $DB->get_records_sql($sql);
-
-        if (!$submission && !$userisingroup) {
-            $groupsize = $this->get_config('students');
-            $lastgroupid = $DB->get_field('groupings_groups', 'groupid', array('groupingid' => $groupingid));
-            
-            if ($lastgroupid) {
-                $memberslastgroup = $DB->count_records('groups_members', array('groupid' => $lastgroupid));
-            } else {
-                $memberslastgroup = 0;
-            }
-
-            if ($memberslastgroup == 0 || $memberslastgroup >= $groupsize) {
-                // Create a new group.
-                $timenow = time();
-                $group = new stdClass();
-                $group->name = get_string('pluginname', 'assignsubmission_reflection').get_string('group','group').date("ymdHis", $timenow);
-                $group->courseid = $COURSE->id;
-                $group->description = "Reflection activity group";
-                $group->id = groups_create_group($group);
-                groups_assign_grouping($groupingid, $group->id);
-                // Add a student to a group.
-                if (!groups_add_member($group->id, $USER->id)) {
-                    print_error('erroraddremoveuser', 'group');
-                }
-            } else {
-                // Add a student to a group.
-                if (!groups_add_member($lastgroupid, $USER->id)) {
-                    print_error('erroraddremoveuser', 'group');
-                }
-            }
-        }
 
         if ($discussionopened) {
-            $forumcm = get_coursemodule_from_instance('forum', $forumid);
-            $redirecturl = new moodle_url($CFG->wwwroot . '/mod/forum/view.php', array('id' => $forumcm->id));
+            $redirecturl = new moodle_url($CFG->wwwroot . '/mod/forum/view.php', array('id' => $forumid));
         } else {
-            $this->update_user_submission($USER->id);
-            $redirecturl = new moodle_url($CFG->wwwroot . '/mod/forum/post.php', array('forum' => $forumid));
+            $redirecturl = new moodle_url($CFG->wwwroot . '/mod/assign/submission/reflection/post.php', array('id' => $cmid));            
         }
-*/
-        $redirecturl = new moodle_url($CFG->wwwroot . '/mod/assign/submission/reflection/post.php', array(
-            'id' => $cmid, 
-            'forumid' => $forumid,
-            'gid' => $groupingid));
         redirect($redirecturl);
 
         return true;
@@ -343,7 +299,8 @@ class assign_submission_reflection extends assign_submission_plugin {
      */
 
     public function view_summary(stdClass $submission, & $showviewlink) {
-        global $DB;
+        global $CFG, $DB;
+        require_once($CFG->dirroot.'/group/lib.php');
 
         $showviewlink = true;
         $userid     = $submission->userid+0;
@@ -365,20 +322,29 @@ class assign_submission_reflection extends assign_submission_plugin {
             $divclass = 'submissionstatus';
         }
 
+        $waitinggroup = groups_get_members($this->get_config('waitingid'));
+        $isinwaiting = groups_is_member($this->get_config('waitingid'));
+
         $result = html_writer::start_tag('div', array('class' => $divclass));
         $result .= get_string('postmade', 'assignsubmission_reflection') . $postmade;
-        $result .= html_writer::empty_tag('br');
-        $result .= get_string('comments', 'assignsubmission_reflection') . $comments;
-        if (!$allpostsreflected) {
+
+        if ((count($waitinggroup)>0) && $isinwaiting) { 
+            $obj = new stdClass();
+            $obj->currentusers = $this->get_config('students')-count($waitinggroup);
+            $obj->neededusers = $this->get_config('students');
             $result .= html_writer::empty_tag('br');
-            $result .= get_string('commentmissing', 'assignsubmission_reflection');
+            $result .= get_string('incomplete', 'assignsubmission_reflection', $obj);
+        } else {
+            $result .= html_writer::empty_tag('br');
+            $result .= get_string('comments', 'assignsubmission_reflection') . $comments;
+            if (!$allpostsreflected) {
+                $result .= html_writer::empty_tag('br');
+                $result .= get_string('commentmissing', 'assignsubmission_reflection');
+            }
         }
-        $result .= html_writer::empty_tag('br');
-        $result .= 'GROUP IS NOT FULL YET ,,, MESSAGE';
         $result .= html_writer::end_tag('div');
 
         return $result;
-
     }
 
 
@@ -509,6 +475,6 @@ class assign_submission_reflection extends assign_submission_plugin {
         $posts = $DB->record_exists_sql($postsquery, array($submission->userid+0, $this->get_config('forumid')));
 
         return empty($posts);
-    }  
+    } 
 
 }

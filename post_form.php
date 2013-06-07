@@ -38,13 +38,9 @@ class post_form extends moodleform {
         // hidden params
         $mform->addElement('hidden', 'id', $this->_customdata['moduleID']);
         $mform->setType('id', PARAM_INT);
-        $mform->addElement('hidden', 'gid', $this->_customdata['gid']);
-        $mform->setType('gid', PARAM_INT);
-        $mform->addElement('hidden', 'forumid', $this->_customdata['forumid']);
-        $mform->setType('forumid', PARAM_INT);
 
         // visible elements
-        $mform->addElement('editor', 'post', get_string('newpost', 'forum'),
+        $mform->addElement('editor', 'post', get_string('pluginname', 'assignsubmission_reflection'),
                 array('cols' => 83, 'rows' => 20));
         $mform->setType('post', PARAM_RAW); // To be cleaned before display.
 
@@ -54,6 +50,10 @@ class post_form extends moodleform {
         // Form validation for errors is done here.
     function validation($data, $files) {
         $errors = array();
+
+        if (strlen(ltrim($data['post']['text'])) < 1) {
+            $errors['post'] = get_string('erroremptymessage', 'forum');
+        }
 
         return $errors;
     }
