@@ -83,11 +83,13 @@ if ($mform->is_cancelled()) {
 
         $plugininstance->update_user_submission($USER->id);
 
+        /*
         // Lock the submission for this user to prevent editing
         $grade = $assigninstance->get_user_grade($USER->id, true);
         $grade->locked = 1;
         $grade->grader = $USER->id;
         $assigninstance->update_grade($grade);
+        */
 
         if ((count($waitingusers)+1) == $plugininstance->get_config('students')) {
             // Create a new reflection group within the grouping
@@ -108,12 +110,13 @@ if ($mform->is_cancelled()) {
                 $DB->set_field('forum_discussions', 'groupid', $justcreatedgroup->id, array('userid' => $user->id, 'forum' => $forumid));
                 groups_add_member($justcreatedgroup, $user);
                 groups_remove_member($waitinggroup, $user);
+                /*
                 // Unlock submissions
                 $grade = $assigninstance->get_user_grade($user->id, true);
                 $grade->locked = 0;
                 $grade->grader = $user->id;
                 $assigninstance->update_grade($grade);
-
+                */
             }
 
         } else {
