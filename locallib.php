@@ -220,12 +220,11 @@ class assign_submission_reflection extends assign_submission_plugin {
         require_once($CFG->dirroot.'/group/lib.php');
 
         $cmid = required_param('id', PARAM_INT);
-        $forumid = $this->get_config('forumid');
-        $discussionopened = $DB->get_record('forum_discussions', array('userid' => $USER->id, 'forum' => $forumid));
-        $groupingid = $DB->get_field('groupings', 'id', array('idnumber' => $forumid));
+        $forum = get_coursemodule_from_instance('forum', $this->get_config('forumid'));
+        $discussionopened = $DB->get_record('forum_discussions', array('userid' => $USER->id, 'forum' => $forum->instance));
 
         if ($discussionopened) {
-            $redirecturl = new moodle_url($CFG->wwwroot . '/mod/forum/view.php', array('id' => $forumid));
+            $redirecturl = new moodle_url($CFG->wwwroot . '/mod/forum/view.php', array('id' => $forum->id));
         } else {
             $redirecturl = new moodle_url($CFG->wwwroot . '/mod/assign/submission/reflection/post.php', array('id' => $cmid));            
         }
@@ -293,6 +292,9 @@ class assign_submission_reflection extends assign_submission_plugin {
 
         list($entries, $comments) = $this->get_entries_and_comments($submission->userid, false);
 
+        $showviewlink = true;
+        $result = $this->view_summary($submission, $showviewlink);
+
         ob_start();
         echo $OUTPUT->heading(get_string('postsmadebyuser', 'forum', fullname($user)), 2);
 
@@ -309,7 +311,7 @@ class assign_submission_reflection extends assign_submission_plugin {
                 forum_print_post($post, $discussion, $forum, $cm, $course);
             }
         }
-        $result = ob_get_contents();
+        $result .= ob_get_contents();
         ob_clean();
 
         return $result;
@@ -330,6 +332,7 @@ class assign_submission_reflection extends assign_submission_plugin {
         $showviewlink = true;
         $userid     = $submission->userid+0;
         $forumid    = $this->get_config('forumid');
+        $forum      = get_coursemodule_from_instance('forum', $this->get_config('forumid'));
 
         list($entries, $comments) = $this->get_entries_and_comments($submission->userid, true);
         $postmade = ($entries) ? get_string('yes') : get_string('no');
@@ -366,6 +369,9 @@ class assign_submission_reflection extends assign_submission_plugin {
                 $result .= html_writer::empty_tag('br');
                 $result .= get_string('commentmissing', 'assignsubmission_reflection');
             }
+            $obj = '<a href="'.$CFG->wwwroot.'/mod/forum/view.php?id='.$forum->id.'">'; 
+            $result .= html_writer::empty_tag('br');
+            $result .= get_string('forumlink', 'assignsubmission_reflection', $obj);
         }
         $result .= html_writer::end_tag('div');
 

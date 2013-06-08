@@ -28,8 +28,7 @@ require_once($CFG->dirroot.'/mod/forum/lib.php');
 require_once($CFG->dirroot.'/group/lib.php');
 require_once($CFG->dirroot.'/mod/assign/locallib.php');
 require_once($CFG->dirroot.'/mod/assign/submission/reflection/locallib.php');
-
-
+ 
 global $CFG, $DB, $PAGE, $COURSE, $USER;
 
 $id      = required_param('id', PARAM_INT);
@@ -55,7 +54,7 @@ $forumid = $plugininstance->get_config('forumid');
 $groupingid = $plugininstance->get_config('groupingid');
 
 require_once($CFG->dirroot.'/mod/assign/submission/reflection/post_form.php');
-$mform = new post_form(null, array('moduleID'=>$id, 'gid' => $gid, 'forumid' => $forumid));
+$mform = new post_form(null, array('moduleID'=>$id));
 
 // Form processing and displaying is done here.
 if ($mform->is_cancelled()) {
@@ -84,6 +83,12 @@ if ($mform->is_cancelled()) {
 
         $plugininstance->update_user_submission($USER->id);
 
+        // Lock the submission for this user to prevent editing
+        $grade = $assigninstance->get_user_grade($USER->id, true);
+        $grade->locked = 1;
+        $grade->grader = $USER->id;
+        $assigninstance->update_grade($grade);
+
         if ((count($waitingusers)+1) == $plugininstance->get_config('students')) {
             // Create a new reflection group within the grouping
             $timenow = time();
@@ -95,15 +100,21 @@ if ($mform->is_cancelled()) {
             groups_assign_grouping($groupingid, $group->id);
             $justcreatedgroup = $DB->get_record('groups', array('id' => $group->id));
 
-            // Move all waiting students to new reflection group
+            // Adding current user to users who wait for group
+            $waitingusers[] = $USER;
+
+            // Move all students to new reflection group
             foreach ($waitingusers as $user) {
-                $DB->set_field('forum_discussions', 'groupid', $justcreatedgroup->id, array('userid' => $user->id, 'forum' => $fromform->forumid));
+                $DB->set_field('forum_discussions', 'groupid', $justcreatedgroup->id, array('userid' => $user->id, 'forum' => $forumid));
                 groups_add_member($justcreatedgroup, $user);
                 groups_remove_member($waitinggroup, $user);
+                // Unlock submissions
+                $grade = $assigninstance->get_user_grade($user->id, true);
+                $grade->locked = 0;
+                $grade->grader = $user->id;
+                $assigninstance->update_grade($grade);
+
             }
-            // Add this student to new reflection group
-            groups_add_member($justcreatedgroup, $USER);
-            $DB->set_field('forum_discussions', 'groupid', $justcreatedgroup->id, array('userid' => $USER->id, 'forum' => $fromform->forumid));
 
         } else {
             // Add this student to a waiting group
