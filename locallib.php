@@ -329,6 +329,8 @@ class assign_submission_reflection extends assign_submission_plugin {
         global $CFG, $DB;
         require_once($CFG->dirroot.'/group/lib.php');
 
+        $action = optional_param('action', '', PARAM_TEXT);
+
         $showviewlink = true;
         $userid     = $submission->userid+0;
         $forumid    = $this->get_config('forumid');
@@ -356,12 +358,14 @@ class assign_submission_reflection extends assign_submission_plugin {
         $result = html_writer::start_tag('div', array('class' => $divclass));
         $result .= get_string('postmade', 'assignsubmission_reflection') . $postmade;
 
-        if ((count($waitinggroup)>0) && $isinwaiting) { 
+        if ($isinwaiting) { 
             $obj = new stdClass();
             $obj->currentusers = $this->get_config('students')-count($waitinggroup);
             $obj->neededusers = $this->get_config('students');
-            $result .= html_writer::empty_tag('br');
-            $result .= get_string('incomplete', 'assignsubmission_reflection', $obj);
+            if ($action<>"grading" && $action<>"viewpluginassignsubmission") {
+                $result .= html_writer::empty_tag('br');
+                $result .= get_string('incomplete', 'assignsubmission_reflection', $obj);
+            }
         } else {
             $result .= html_writer::empty_tag('br');
             $result .= get_string('comments', 'assignsubmission_reflection') . $comments;
@@ -369,9 +373,11 @@ class assign_submission_reflection extends assign_submission_plugin {
                 $result .= html_writer::empty_tag('br');
                 $result .= get_string('commentmissing', 'assignsubmission_reflection');
             }
-            $obj = '<a href="'.$CFG->wwwroot.'/mod/forum/view.php?id='.$forum->id.'">'; 
-            $result .= html_writer::empty_tag('br');
-            $result .= get_string('forumlink', 'assignsubmission_reflection', $obj);
+            if ($action<>"grading" && $action<>"viewpluginassignsubmission") {
+                $obj = '<a href="'.$CFG->wwwroot.'/mod/forum/view.php?id='.$forum->id.'">'; 
+                $result .= html_writer::empty_tag('br');
+                $result .= get_string('forumlink', 'assignsubmission_reflection', $obj);
+            }
         }
         $result .= html_writer::end_tag('div');
 
