@@ -118,7 +118,7 @@ class assign_submission_reflection extends assign_submission_plugin {
             // First add a course module for a forum.
             $newcm = new stdClass();
             $newcm->course           = $COURSE->id;
-            $newcm->module           = 9; // Forum
+            $newcm->module           = $DB->get_field('modules', 'id', array('name' => 'forum')); // Forum
             $newcm->section          = $data->section;
             $newcm->instance         = 0; // not known yet, will be updated later (this is similar to restore code)
             $newcm->visible          = $data->visible;
