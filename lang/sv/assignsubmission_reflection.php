@@ -32,6 +32,7 @@ $string['enabled'] = 'Reflektion';
 $string['enabled_help'] = 'Om aktiverat kan studenterna bearbeta reflektionerna.';
 $string['forumintro'] = '<p>För instruktioner, gå till den ursprungliga uppgiften {$a->href} {$a->name}</a>.</p>';
 $string['forumlink'] = '<p>Alla gruppmedlemmar har nu skickat in sina reflektioner. Du skall nu skicka minst en kommentar till varje reflektion innan du är klar för betygsättning. Fortsätt genom att klicka på "ändra inlämning" knappen eller via denna länk: {$a} Go to Forum</a>.</p>';
+$string['grouproom'] = 'Grupprum';
 $string['incomplete'] = 'Väntar på att {$a->currentusers} av {$a->neededusers} ska lämna in sina reflektioner';
 $string['pluginname'] = 'Reflektion';
 $string['postmade'] = 'Reflektion inlämnad: ';

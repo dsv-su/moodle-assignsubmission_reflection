@@ -137,7 +137,7 @@ class assign_submission_reflection extends assign_submission_plugin {
             // Then add a forum.
             $forum = new stdClass();
             $forum->course = $COURSE->id;
-            $forum->name = $data->name.' '.get_string('forum', 'forum');
+            $forum->name = $data->name.' '.get_string('grouproom', 'assignsubmission_reflection');
             $forum->type = 'eachuser';
             $obj = new stdClass();
             $obj->name = $data->name;
@@ -163,7 +163,7 @@ class assign_submission_reflection extends assign_submission_plugin {
             // note: allow them to set it even without moodle/course:activityvisibility
             set_coursemodule_visible($coursemodule, $data->visible);
         } else {
-            $existingforum->name = $data->name.' '.get_string('forum', 'forum');
+            $existingforum->name = $data->name.' '.get_string('grouproom', 'assignsubmission_reflection');
             $obj = new stdClass();
             $obj->name = $data->name;
             $obj->href = '<a href="'.$CFG->wwwroot.'/mod/assign/view.php?id='.$data->coursemodule.'">';

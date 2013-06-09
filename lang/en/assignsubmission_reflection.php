@@ -32,6 +32,7 @@ $string['enabled'] = 'Reflection';
 $string['enabled_help'] = 'If enabled, students are able to work with Reflection.';
 $string['forumintro'] = '<p>For instructions, please go to the original assignment {$a->href} {$a->name}</a>.</p>';
 $string['forumlink'] = '<p><i>All group members have submitted their reflections. You need to make at least 1 comment on each reflection before you are ready for grading. Please proceed with "Edit my submission" button or with this link: {$a} Go to Forum</a>.</p>';
+$string['grouproom'] = 'Group room';
 $string['incomplete'] = '<br>Waiting for {$a->currentusers} out of {$a->neededusers} group members to submit their reflections';
 $string['pluginname'] = 'Reflection';
 $string['postmade'] = 'Reflection posted: ';
