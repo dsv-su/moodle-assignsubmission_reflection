@@ -67,6 +67,10 @@ if ($mform->is_cancelled()) {
         // Get who is in waiting list
         $waitingusers = groups_get_members($waitinggroup->id);
 
+        if ($DB->get_record('forum_discussions', array('forum' => $forumid, 'userid' => $USER->id))) {
+            print_error(get_string('cannotaddreflection', 'assignsubmission_reflection'));
+        }
+
         // Create a discussion
         $discussion = new stdClass();
         $discussion->course = $cm->course;
