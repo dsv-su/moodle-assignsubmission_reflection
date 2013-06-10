@@ -145,7 +145,7 @@ class assign_submission_reflection extends assign_submission_plugin {
             $forum->intro = get_string('forumintro', 'assignsubmission_reflection', $obj);
             $forum->section = $data->section;
             $forum->coursemodule = $coursemodule;
-            $forum->forcesubscribe = 1; // Auto subscription.
+            $forum->forcesubscribe = 0; // Auto subscription.
             $forum->maxbytes = 512000;
             $forum->maxattachments = 1;
             $forum->cmidnumber = $data->cmidnumber; // Not sure why it is needed, but this prevents errors.

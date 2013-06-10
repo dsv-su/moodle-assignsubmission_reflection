@@ -79,6 +79,10 @@ if ($mform->is_cancelled()) {
         $discussion->messagetrust = 0;
         $discussion->mailnow = 0;
 
+        if ($DB->get_record('forum_discussions', array('forum' => $forumid, 'userid' => $USER->id))) {
+            print_error(get_string('cannotaddreflection', 'assignsubmission_reflection'));
+        }
+
         forum_add_discussion($discussion);
 
         $plugininstance->update_user_submission($USER->id);
