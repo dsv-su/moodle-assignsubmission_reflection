@@ -53,15 +53,15 @@ class assign_submission_reflection extends assign_submission_plugin {
             $studentsdefault = get_config('assignsubmission_reflection', 'students');
         }
 
-        $mform->setDefault('assignsubmission_file_enabled', 0);
-        $mform->setDefault('assignsubmission_blog_enabled', 0);
-        $mform->setDefault('assignsubmission_online_enabled', 0);
-        $mform->disabledIf('assignsubmission_file_enabled', 'assignsubmission_reflection_enabled', 'eq', 1);
-        $mform->disabledIf('assignsubmission_blog_enabled', 'assignsubmission_reflection_enabled', 'eq', 1);
-        $mform->disabledIf('assignsubmission_onlinetext_enabled', 'assignsubmission_reflection_enabled', 'eq', 1);
+        //$mform->setDefault('assignsubmission_file_enabled', 0);
+        //$mform->setDefault('assignsubmission_blog_enabled', 0);
+        //$mform->setDefault('assignsubmission_online_enabled', 0);
+        //$mform->disabledIf('assignsubmission_file_enabled', 'assignsubmission_reflection_enabled', 'eq', 1);
+        //$mform->disabledIf('assignsubmission_blog_enabled', 'assignsubmission_reflection_enabled', 'eq', 1);
+        //$mform->disabledIf('assignsubmission_onlinetext_enabled', 'assignsubmission_reflection_enabled', 'eq', 1);
         $mform->setDefault('submissiondrafts', 1);
         $mform->setDefault('teamsubmission', 0);
-        $mform->disabledIf('teamsubmission', 'assignsubmission_reflection_enabled', 'eq', 1);
+        //$mform->disabledIf('teamsubmission', 'assignsubmission_reflection_enabled', 'eq', 1);
         //$mform->setDefault('assignsubmission_mailsimulator_enabled', 0);
         //$mform->disabledIf('assignsubmission_mailsimulator_enabled', 'assignsubmission_reflection_enabled', 'eq', 1);
 
