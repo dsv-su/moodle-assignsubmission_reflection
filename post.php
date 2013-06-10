@@ -81,8 +81,6 @@ if ($mform->is_cancelled()) {
 
         forum_add_discussion($discussion);
 
-        //test
-
         $plugininstance->update_user_submission($USER->id);
 
         /*
