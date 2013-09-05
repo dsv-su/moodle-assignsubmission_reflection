@@ -77,9 +77,9 @@ class assign_submission_reflection extends assign_submission_plugin {
         $mform->addHelpButton('assignsubmission_reflection_students', 'students',
             'assignsubmission_reflection');
         // Moodle 2.5.
-        // $mform->disabledIf('assignsubmission_mailsimulator_filesubmissions', 'assignsubmission_mailsimulator_enabled', 'notchecked');
+        $mform->disabledIf('assignsubmission_mailsimulator_filesubmissions', 'assignsubmission_mailsimulator_enabled', 'notchecked');
         // Moodle 2.4.
-        $mform->disabledIf('assignsubmission_reflection_students', 'assignsubmission_reflection_enabled', 'eq', 0);
+        // $mform->disabledIf('assignsubmission_reflection_students', 'assignsubmission_reflection_enabled', 'eq', 0);
 
     }
 
