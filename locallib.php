@@ -299,9 +299,13 @@ class assign_submission_reflection extends assign_submission_plugin {
         echo $OUTPUT->heading(get_string('postsmadebyuser', 'forum', fullname($user)), 2);
 
         echo $OUTPUT->heading(get_string('pluginname', 'assignsubmission_reflection', 3));
-        $post = forum_get_post_full(current($entries)->id);
-        $discussion = $DB->get_record('forum_discussions', array('userid' => $submission->userid, 'forum' => $forumid));   
-        forum_print_post($post, $discussion, $forum, $cm, $course);
+        
+        // We handle even duplicated posts, for migration sake.
+        foreach ($entries as $post) {
+            $post = forum_get_post_full($post->id);
+            $discussion = $DB->get_record('forum_discussions', array('id' => $post->discussion));   
+            forum_print_post($post, $discussion, $forum, $cm, $course); 
+        }
 
         if (count($comments) > 0) {
             echo $OUTPUT->heading(get_string('comments'), 3);

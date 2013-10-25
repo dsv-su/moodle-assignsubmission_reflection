@@ -135,7 +135,9 @@ if ($mform->is_cancelled()) {
     // This branch is executed if the form is submitted but the data doesn't validate and the form should be redisplayed
     // or on the first display of the form.
     echo $OUTPUT->header();
-    if ($plugininstance->user_have_registered_submission($USER->id, $cm->instance)) {
+    $userdiscussion = $DB->get_record('forum_discussions', array('forum' => $forumid, 'userid' => $USER->id));
+    //if ($plugininstance->user_have_registered_submission($USER->id, $cm->instance)) {
+    if ($userdiscussion) {
         print_error(get_string('cannotaddreflection', 'assignsubmission_reflection'));
     }
     // Display the form.
