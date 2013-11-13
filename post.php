@@ -58,7 +58,7 @@ $mform = new post_form(null, array('moduleID'=>$id));
 
 // Form processing and displaying is done here.
 if ($mform->is_cancelled()) {
-    groups_remove_member($waitinggroup, $USER);
+    //groups_remove_member($waitinggroup, $USER);
     redirect($CFG->wwwroot . '/mod/assign/view.php?id=' . $cm->id, get_string('reflectioncancelled', 'assignsubmission_reflection'), 1);
 } else if ($fromform = $mform->get_data()) {
     // In this case you process validated data. $mform->get_data() returns data posted in form.
