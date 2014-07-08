@@ -28,18 +28,18 @@ require_once($CFG->libdir . '/validateurlsyntax.php');
 
 class post_form extends moodleform {
 
-    function definition() {
+    protected function definition() {
         global $CFG, $DB;
 
         $id = optional_param('id', 0, PARAM_INT);
         $cm = get_coursemodule_from_id('assign', $id, 0, false, MUST_EXIST);
         $mform =& $this->_form;
 
-        // hidden params
+        // Hidden params.
         $mform->addElement('hidden', 'id', $this->_customdata['moduleID']);
         $mform->setType('id', PARAM_INT);
 
-        // visible elements
+        // Visible elements.
         $mform->addElement('editor', 'post', get_string('pluginname', 'assignsubmission_reflection'),
                 array('cols' => 83, 'rows' => 20));
         $mform->setType('post', PARAM_RAW); // To be cleaned before display.
@@ -47,8 +47,7 @@ class post_form extends moodleform {
         $this->add_action_buttons(true, 'Submit');
     }
 
-        // Form validation for errors is done here.
-    function validation($data, $files) {
+    public function validation($data, $files) {
         $errors = array();
 
         if (strlen(ltrim($data['post']['text'])) < 1) {

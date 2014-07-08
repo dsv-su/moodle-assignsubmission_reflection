@@ -28,7 +28,7 @@ require_once($CFG->dirroot.'/mod/forum/lib.php');
 require_once($CFG->dirroot.'/group/lib.php');
 require_once($CFG->dirroot.'/mod/assign/locallib.php');
 require_once($CFG->dirroot.'/mod/assign/submission/reflection/locallib.php');
- 
+
 global $CFG, $DB, $PAGE, $COURSE, $USER;
 
 $id      = required_param('id', PARAM_INT);
@@ -54,32 +54,32 @@ $forumid = $plugininstance->get_config('forumid');
 $groupingid = $plugininstance->get_config('groupingid');
 
 require_once($CFG->dirroot.'/mod/assign/submission/reflection/post_form.php');
-$mform = new post_form(null, array('moduleID'=>$id));
+$mform = new post_form(null, array('moduleID' => $id));
 
 // Form processing and displaying is done here.
 if ($mform->is_cancelled()) {
-    //groups_remove_member($waitinggroup, $USER);
-    redirect($CFG->wwwroot . '/mod/assign/view.php?id=' . $cm->id, get_string('reflectioncancelled', 'assignsubmission_reflection'), 1);
+    redirect($CFG->wwwroot . '/mod/assign/view.php?id=' . $cm->id,
+        get_string('reflectioncancelled', 'assignsubmission_reflection'), 1);
 } else if ($fromform = $mform->get_data()) {
     // In this case you process validated data. $mform->get_data() returns data posted in form.
     if ($mform->is_validated()) {
 
-        // Get who is in waiting list
+        // Get who is in the waiting list.
         $waitingusers = groups_get_members($waitinggroup->id);
 
         if ($DB->get_record('forum_discussions', array('forum' => $forumid, 'userid' => $USER->id))) {
             print_error(get_string('cannotaddreflection', 'assignsubmission_reflection'));
         }
 
-        // Create a discussion
+        // Create a discussion.
         $discussion = new stdClass();
         $discussion->course = $cm->course;
         $discussion->forum = $forumid;
         $discussion->groupid = 0;
-        $discussion->name = get_string('pluginname', 'assignsubmission_reflection') . ' ' . (count($waitingusers)+1);
+        $discussion->name = get_string('pluginname', 'assignsubmission_reflection') . ' ' . (count($waitingusers) + 1);
         $discussion->firstpost = 0;
         $discussion->message = $fromform->post['text'];
-        $discussion->messageformat = $fromform->post['format']+0;
+        $discussion->messageformat = $fromform->post['format'] + 0;
         $discussion->messagetrust = 0;
         $discussion->mailnow = 0;
 
@@ -87,56 +87,45 @@ if ($mform->is_cancelled()) {
 
         $plugininstance->update_user_submission($USER->id);
 
-        /*
-        // Lock the submission for this user to prevent editing
-        $grade = $assigninstance->get_user_grade($USER->id, true);
-        $grade->locked = 1;
-        $grade->grader = $USER->id;
-        $assigninstance->update_grade($grade);
-        */
-
-        if ((count($waitingusers)+1) == $plugininstance->get_config('students')) {
-            // Create a new reflection group within the grouping
+        if ((count($waitingusers) + 1) == $plugininstance->get_config('students')) {
+            // Create a new reflection group within the grouping.
             $timenow = time();
             $group = new stdClass();
-            $group->name = get_string('pluginname', 'assignsubmission_reflection').get_string('group','group').date("ymdHis", $timenow);
+            $group->name = get_string('pluginname', 'assignsubmission_reflection')
+                . get_string('group', 'group').date("ymdHis", $timenow);
             $group->courseid = $COURSE->id;
             $group->description = "Reflection activity group";
             $group->id = groups_create_group($group);
             groups_assign_grouping($groupingid, $group->id);
             $justcreatedgroup = $DB->get_record('groups', array('id' => $group->id));
 
-            // Adding current user to users who wait for group
+            // Adding current user to users who wait for group.
             $waitingusers[] = $USER;
 
-            // Move all students to new reflection group
+            // Move all students to new reflection group.
             foreach ($waitingusers as $user) {
-                $DB->set_field('forum_discussions', 'groupid', $justcreatedgroup->id, array('userid' => $user->id, 'forum' => $forumid));
+                $DB->set_field('forum_discussions', 'groupid', $justcreatedgroup->id, array(
+                    'userid' => $user->id,
+                    'forum' => $forumid
+                    ));
                 groups_add_member($justcreatedgroup, $user);
                 groups_remove_member($waitinggroup, $user);
-                /*
-                // Unlock submissions
-                $grade = $assigninstance->get_user_grade($user->id, true);
-                $grade->locked = 0;
-                $grade->grader = $user->id;
-                $assigninstance->update_grade($grade);
-                */
             }
 
         } else {
-            // Add this student to a waiting group
+            // Add this student to a waiting group.
             groups_add_member($waitinggroup, $USER);
         }
-    
-        redirect($CFG->wwwroot . '/mod/assign/view.php?id=' . $cm->id, get_string('reflectionadded', 'assignsubmission_reflection'), 1);
+
+        redirect($CFG->wwwroot . '/mod/assign/view.php?id=' . $cm->id,
+            get_string('reflectionadded', 'assignsubmission_reflection'), 1);
     }
 
 } else {
-    // This branch is executed if the form is submitted but the data doesn't validate and the form should be redisplayed
-    // or on the first display of the form.
+    /* This branch is executed if the form is submitted but the data doesn't validate and the form should be redisplayed
+    or on the first display of the form. */
     echo $OUTPUT->header();
     $userdiscussion = $DB->get_record('forum_discussions', array('forum' => $forumid, 'userid' => $USER->id));
-    //if ($plugininstance->user_have_registered_submission($USER->id, $cm->instance)) {
     if ($userdiscussion) {
         print_error(get_string('cannotaddreflection', 'assignsubmission_reflection'));
     }

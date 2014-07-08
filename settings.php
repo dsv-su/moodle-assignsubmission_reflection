@@ -33,7 +33,7 @@ $settings->add(new admin_setting_configcheckbox('assignsubmission_reflection/def
         new lang_string('default_help', 'assignsubmission_reflection'), 0));
 
 $maxstudents = array();
-for ($i=1; $i <= ASSIGNSUBMISSION_REFLECTION_MAXSTUDENTS; $i++) {
+for ($i = 1; $i <= ASSIGNSUBMISSION_REFLECTION_MAXSTUDENTS; $i++) {
     $maxstudents[$i] = $i;
 }
 $settings->add(new admin_setting_configselect('assignsubmission_reflection/students',

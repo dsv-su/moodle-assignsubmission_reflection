@@ -53,21 +53,9 @@ class assign_submission_reflection extends assign_submission_plugin {
             $studentsdefault = get_config('assignsubmission_reflection', 'students');
         }
 
-        //$mform->setDefault('assignsubmission_file_enabled', 0);
-        //$mform->setDefault('assignsubmission_blog_enabled', 0);
-        //$mform->setDefault('assignsubmission_online_enabled', 0);
-        //$mform->disabledIf('assignsubmission_file_enabled', 'assignsubmission_reflection_enabled', 'eq', 1);
-        //$mform->disabledIf('assignsubmission_blog_enabled', 'assignsubmission_reflection_enabled', 'eq', 1);
-        //$mform->disabledIf('assignsubmission_onlinetext_enabled', 'assignsubmission_reflection_enabled', 'eq', 1);
-        //$mform->setDefault('submissiondrafts', 1);
-        //$mform->setDefault('teamsubmission', 0);
-        //$mform->disabledIf('teamsubmission', 'assignsubmission_reflection_enabled', 'eq', 1);
-        //$mform->setDefault('assignsubmission_mailsimulator_enabled', 0);
-        //$mform->disabledIf('assignsubmission_mailsimulator_enabled', 'assignsubmission_reflection_enabled', 'eq', 1);
-
         // Select number of students in a group.
         $maxstudents = array();
-        for ($i=1; $i <= ASSIGNSUBMISSION_REFLECTION_MAXSTUDENTS; $i++) {
+        for ($i = 1; $i <= ASSIGNSUBMISSION_REFLECTION_MAXSTUDENTS; $i++) {
             $maxstudents[$i] = $i;
         }
         $mform->addElement('select', 'assignsubmission_reflection_students',
@@ -115,15 +103,15 @@ class assign_submission_reflection extends assign_submission_plugin {
             // First add a course module for a forum.
             $newcm = new stdClass();
             $newcm->course           = $COURSE->id;
-            $newcm->module           = $DB->get_field('modules', 'id', array('name' => 'forum')); // Forum
+            $newcm->module           = $DB->get_field('modules', 'id', array('name' => 'forum'));
             $newcm->section          = $data->section;
-            $newcm->instance         = 0; // not known yet, will be updated later (this is similar to restore code)
+            $newcm->instance         = 0; // Not known yet, will be updated later (this is similar to restore code).
             $newcm->visible          = $data->visible;
             $newcm->visibleold       = $data->visible;
             $newcm->groupmode        = 1; // Separate groups.
             $newcm->groupingid       = 0; // Not known yet, will be updated later.
             $newcm->groupmembersonly = 1;
-            if(!empty($CFG->enableavailability)) {
+            if (!empty($CFG->enableavailability)) {
                 $newcm->availablefrom             = $data->availablefrom;
                 $newcm->availableuntil            = $data->availableuntil;
                 $newcm->showavailability          = $data->showavailability;
@@ -149,15 +137,13 @@ class assign_submission_reflection extends assign_submission_plugin {
             $forumid = forum_add_instance($forum);
 
             // Configure the newly created module to be assosicated with the newly created forum.
-            $DB->set_field('course_modules', 'instance', $forumid, array('id'=>$coursemodule));
+            $DB->set_field('course_modules', 'instance', $forumid, array('id' => $coursemodule));
 
-            // !!!remove as much as we can if forum has not been created.... - todo!!!
+            // Remove as much as we can if forum has not been created.... - TODO!
 
-            // course_modules and course_sections each contain a reference
-            // to each other, so we have to update one of them twice.
+            // Course_modules and course_sections each contain a reference to each other, so we have to update one of them twice.
             $sectionid = course_add_cm_to_section($COURSE, $coursemodule, $data->section);
-            // make sure visibility is set correctly (in particular in calendar)
-            // note: allow them to set it even without moodle/course:activityvisibility
+            // Make sure visibility is set correctly (in particular in calendar).
             set_coursemodule_visible($coursemodule, $data->visible);
         } else {
             $existingforum->name = $data->name.' '.get_string('grouproom', 'assignsubmission_reflection');
@@ -173,22 +159,22 @@ class assign_submission_reflection extends assign_submission_plugin {
         if (!$existinggrouping) {
             // Create a grouping. Control variable idnumber = forumid.
             $grouping = new stdClass();
-            $grouping->name = $data->name.' '.get_string('grouping','group');
+            $grouping->name = $data->name.' '.get_string('grouping', 'group');
             $grouping->courseid = $COURSE->id;
             $grouping->idnumber = $forumid;
             $grouping->description = "Reflection grouping";
             $groupingid = groups_create_grouping($grouping);
             // Configure the newly created forum to be associated with the newly created grouping.
-            $DB->set_field('course_modules', 'groupingid', $grouping->id, array('id'=>$coursemodule));
+            $DB->set_field('course_modules', 'groupingid', $grouping->id, array('id' => $coursemodule));
         } else {
-            $existinggrouping->name = $data->name.' '.get_string('grouping','group');
+            $existinggrouping->name = $data->name.' '.get_string('grouping', 'group');
             $DB->update_record('groupings', $existinggrouping);
             $groupingid = $this->get_config('groupingid');
         }
 
         $existingwaiting = $DB->get_record('groups', array('id' => $this->get_config('waitingid')));
         if (!$existingwaiting) {
-            // Create a group for waiting students
+            // Create a group for waiting students.
             $group = new stdClass();
             $group->courseid = $COURSE->id;
             $group->name = get_string('waitingname', 'assignsubmission_reflection', $data->name);
@@ -200,7 +186,7 @@ class assign_submission_reflection extends assign_submission_plugin {
             $DB->update_record('groups', $existingwaiting);
             $waitingid = $this->get_config('waitingid');
         }
-        
+
         return array($forumid, $groupingid, $waitingid);
     }
 
@@ -223,7 +209,7 @@ class assign_submission_reflection extends assign_submission_plugin {
         if ($discussionopened) {
             $redirecturl = new moodle_url($CFG->wwwroot . '/mod/forum/view.php', array('id' => $forum->id));
         } else {
-            $redirecturl = new moodle_url($CFG->wwwroot . '/mod/assign/submission/reflection/post.php', array('id' => $cmid));            
+            $redirecturl = new moodle_url($CFG->wwwroot . '/mod/assign/submission/reflection/post.php', array('id' => $cmid));
         }
         redirect($redirecturl);
 
@@ -237,11 +223,11 @@ class assign_submission_reflection extends assign_submission_plugin {
      * @param mixed $assignment_instance
      * @return mixed False if no submission, else the submission record.
      */
-    function user_have_registered_submission($userid, $assignment_instance) {
+    public function user_have_registered_submission($userid, $assignmentinstance) {
         global $DB;
 
         $submission = $DB->get_record('assign_submission', array(
-            'assignment' => $assignment_instance,
+            'assignment' => $assignmentinstance,
             'userid' => $userid
         ));
 
@@ -253,7 +239,7 @@ class assign_submission_reflection extends assign_submission_plugin {
      *
      * @param int $userid
      */
-    function update_user_submission($userid) {
+    public function update_user_submission($userid) {
         global $DB;
 
         $cmid = required_param('id', PARAM_INT);
@@ -296,19 +282,19 @@ class assign_submission_reflection extends assign_submission_plugin {
         echo $OUTPUT->heading(get_string('postsmadebyuser', 'forum', fullname($user)), 2);
 
         echo $OUTPUT->heading(get_string('pluginname', 'assignsubmission_reflection', 3));
-        
+
         // We handle even duplicated posts, for migration sake.
         foreach ($entries as $post) {
             $post = forum_get_post_full($post->id);
-            $discussion = $DB->get_record('forum_discussions', array('id' => $post->discussion));   
-            forum_print_post($post, $discussion, $forum, $cm, $course); 
+            $discussion = $DB->get_record('forum_discussions', array('id' => $post->discussion));
+            forum_print_post($post, $discussion, $forum, $cm, $course);
         }
 
         if (count($comments) > 0) {
             echo $OUTPUT->heading(get_string('comments'), 3);
             foreach ($comments as $comment) {
                 $post = forum_get_post_full($comment->id);
-                $discussion = $DB->get_record('forum_discussions', array('id' => $post->discussion));   
+                $discussion = $DB->get_record('forum_discussions', array('id' => $post->discussion));
                 forum_print_post($post, $discussion, $forum, $cm, $course);
             }
         }
@@ -333,14 +319,14 @@ class assign_submission_reflection extends assign_submission_plugin {
         $action = optional_param('action', '', PARAM_TEXT);
 
         $showviewlink = true;
-        $userid     = $submission->userid+0;
+        $userid     = $submission->userid + 0;
         $forumid    = $this->get_config('forumid');
         $forum      = get_coursemodule_from_instance('forum', $this->get_config('forumid'));
 
         list($entries, $comments) = $this->get_entries_and_comments($submission->userid, true);
         $postmade = ($entries) ? get_string('yes') : get_string('no');
-        $sql = "SELECT DISTINCT p.discussion FROM {forum_posts} p 
-            INNER JOIN {forum_discussions} d 
+        $sql = "SELECT DISTINCT p.discussion FROM {forum_posts} p
+            INNER JOIN {forum_discussions} d
             ON p.discussion = d.id WHERE
             forum = " . $forumid . " and p.userid = " . $userid;
         $reflecteddiscussions = $DB->get_records_sql($sql);
@@ -359,11 +345,11 @@ class assign_submission_reflection extends assign_submission_plugin {
         $result = html_writer::start_tag('div', array('class' => $divclass));
         $result .= get_string('postmade', 'assignsubmission_reflection') . $postmade;
 
-        if ($isinwaiting) { 
+        if ($isinwaiting) {
             $obj = new stdClass();
-            $obj->currentusers = $this->get_config('students')-count($waitinggroup);
+            $obj->currentusers = $this->get_config('students') - count($waitinggroup);
             $obj->neededusers = $this->get_config('students');
-            if ($action<>"grading" && $action<>"viewpluginassignsubmission") {
+            if ($action <> "grading" && $action <> "viewpluginassignsubmission") {
                 $result .= html_writer::empty_tag('br');
                 $result .= get_string('incomplete', 'assignsubmission_reflection', $obj);
             }
@@ -374,8 +360,8 @@ class assign_submission_reflection extends assign_submission_plugin {
                 $result .= html_writer::empty_tag('br');
                 $result .= get_string('commentmissing', 'assignsubmission_reflection');
             }
-            if ($action<>"grading" && $action<>"viewpluginassignsubmission") {
-                $obj = '<a href="'.$CFG->wwwroot.'/mod/forum/view.php?id='.$forum->id.'">'; 
+            if ($action <> "grading" && $action <> "viewpluginassignsubmission") {
+                $obj = '<a href="'.$CFG->wwwroot.'/mod/forum/view.php?id='.$forum->id.'">';
                 $result .= html_writer::empty_tag('br');
                 $result .= get_string('forumlink', 'assignsubmission_reflection', $obj);
             }
@@ -404,12 +390,13 @@ class assign_submission_reflection extends assign_submission_plugin {
             $selectstatement = 'SELECT p.id ';
         }
 
+        $entriesquery = $selectstatement.'FROM {forum_posts} p JOIN {forum_discussions} d
+            ON d.id = p.discussion WHERE p.userid = ?
+            AND d.forum = ? AND p.parent = 0';
 
-        $entriesquery = $selectstatement.'FROM {forum_posts} p JOIN {forum_discussions} d ON d.id = p.discussion WHERE p.userid = ? '.
-                        'AND d.forum = ? AND p.parent = 0';
-
-        $commentsquery = $selectstatement.'FROM {forum_posts} p JOIN {forum_discussions} d ON d.id = p.discussion WHERE p.userid = ? '.
-                        'AND d.forum = ? AND p.parent <> 0';
+        $commentsquery = $selectstatement.'FROM {forum_posts} p JOIN {forum_discussions} d
+            ON d.id = p.discussion WHERE p.userid = ?
+            AND d.forum = ? AND p.parent <> 0';
 
         if (!empty($this->assignment->get_instance()->preventlatesubmissions)) {
             $daterestriction = ' AND p.created BETWEEN '.$this->assignment->get_instance()->allowsubmissionsfromdate.
@@ -471,14 +458,14 @@ class assign_submission_reflection extends assign_submission_plugin {
             ob_start();
             echo html_writer::tag('h3', get_string('pluginname', 'assignsubmission_reflection', fullname($user)));
             $post = forum_get_post_full(current($entries)->id);
-            $discussion = $DB->get_record('forum_discussions', array('userid' => $submission->userid, 'forum' => $forumid));   
+            $discussion = $DB->get_record('forum_discussions', array('userid' => $submission->userid, 'forum' => $forumid));
             forum_print_post($post, $discussion, $forum, $cm, $course);
 
             if (count($comments) > 0) {
                 echo html_writer::tag('h3', get_string('comments'));
                 foreach ($comments as $comment) {
                     $post = forum_get_post_full($comment->id);
-                    $discussion = $DB->get_record('forum_discussions', array('id' => $post->discussion));   
+                    $discussion = $DB->get_record('forum_discussions', array('id' => $post->discussion));
                     forum_print_post($post, $discussion, $forum, $cm, $course);
                 }
             }
@@ -510,9 +497,8 @@ class assign_submission_reflection extends assign_submission_plugin {
             $postsquery  .= $daterestriction;
         }
 
-        $posts = $DB->record_exists_sql($postsquery, array($submission->userid+0, $this->get_config('forumid')));
+        $posts = $DB->record_exists_sql($postsquery, array($submission->userid + 0, $this->get_config('forumid')));
 
         return empty($posts);
-    } 
-
+    }
 }
