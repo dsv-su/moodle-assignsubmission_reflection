@@ -202,7 +202,8 @@ class assign_submission_reflection extends assign_submission_plugin {
         global $CFG, $DB, $COURSE, $USER;
         require_once($CFG->dirroot.'/group/lib.php');
 
-        $cmid = required_param('id', PARAM_INT);
+        $cm  = $this->assignment->get_course_module();
+        $cmid = $cm->id;
         $forum = get_coursemodule_from_instance('forum', $this->get_config('forumid'));
         $discussionopened = $DB->get_record('forum_discussions', array('userid' => $USER->id, 'forum' => $forum->instance));
 
@@ -242,8 +243,8 @@ class assign_submission_reflection extends assign_submission_plugin {
     public function update_user_submission($userid) {
         global $DB;
 
-        $cmid = required_param('id', PARAM_INT);
-        $cm = get_coursemodule_from_id('assign', $cmid, 0, false, MUST_EXIST);
+        $cm         = $this->assignment->get_course_module();
+        $cmid         = $cm->id;
 
         $existingsubmission = $this->user_have_registered_submission($userid, $cm->instance);
         $submission = $this->assignment->get_user_submission($userid, true);
@@ -264,10 +265,10 @@ class assign_submission_reflection extends assign_submission_plugin {
         global $CFG, $DB, $OUTPUT, $PAGE, $COURSE;
         require_once($CFG->dirroot . '/mod/forum/lib.php');
 
-        $id         = required_param('id', PARAM_INT);
+        $cm         = $this->assignment->get_course_module();
+        $id         = $cm->id;
         $sid        = optional_param('sid', $submission->id, PARAM_INT);
         $gid        = optional_param('gid', 0, PARAM_INT);
-        $cm         = get_coursemodule_from_id('assign', $id, 0, false, MUST_EXIST);
         $course     = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
         $forumid    = $this->get_config('forumid');
         $forum      = $DB->get_record('forum', array('id' => $forumid));
