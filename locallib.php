@@ -428,8 +428,8 @@ class assign_submission_reflection extends assign_submission_plugin {
         global $DB, $CFG;
         require_once($CFG->dirroot . '/mod/forum/lib.php');
 
-        $id         = required_param('id', PARAM_INT);
-        $cm         = get_coursemodule_from_id('assign', $id, 0, false, MUST_EXIST);
+        $cm         = $this->assignment->get_course_module();
+        $id         = $cm->id;
         $course     = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
         $forumid    = $this->get_config('forumid');
         $forum      = $DB->get_record('forum', array('id' => $forumid));
